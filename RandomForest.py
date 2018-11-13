@@ -36,7 +36,7 @@ class RandomForest:
         self.oob_score = oob_score
         self.n_jobs = n_jobs
         self.random_state = random_state
-        self.tree_base_node = 0
+        self.tree_base_node = []
         
     class RFTreeNode:
         def __init__(self):
@@ -110,12 +110,17 @@ class RandomForest:
         np.random.seed(self.random_state)
 
         for iEstimator in range(self.n_estimators):
-            self.tree_base_node = self.RFTreeNode()
-            self.tree_base_node.grow_tree(x,y,max_features,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0)
+            self.tree_base_node.append(self.RFTreeNode())
+            self.tree_base_node[-1].grow_tree(x,y,max_features,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0)
             
     def predict(self,x):
         if len(x.shape) == 1:
-            return self.tree_base_node(x)
+            prediction = 0.0
+            for iEstimator in range(self.n_estimators):
+                prediction+=self.tree_base_node[iEstimator].predict(x)
+            return prediction/float(self.n_estimators)
         else:
-            #return np.apply_along_axis(self.tree_base_node.predict,axis=0,x)
-            return np.array([self.tree_base_node.predict(x[:,indx]) for indx in range(x.shape[1])])
+            prediction = np.zeros(x.shape[1])
+            for iEstimator in range(self.n_estimators):
+                prediction+=np.array([self.tree_base_node[iEstimator].predict(x[:,indx]) for indx in range(x.shape[1])])
+            return prediction/float(self.n_estimators)
