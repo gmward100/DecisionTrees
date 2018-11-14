@@ -6,7 +6,7 @@ Created on Wed Nov  13 09:43:52 2018
 """
 
 import numpy as np
-
+import scipy as sp
 # Random Forest Classifier Algorithm
 class RandomForest:
     
@@ -50,9 +50,10 @@ class RandomForest:
         def grow_tree(self,x,y,max_features,criterion,min_samples_leaf,min_samples_split,max_depth,depth):
             
             self.depth = depth+1
-            if self.depth == max_depth:
-                self.prediction_value = np.mean(y)
-                return
+            if max_depth is not None:
+                if self.depth == max_depth:
+                    self.prediction_value = np.mean(y)
+                    return
                 
             ySum = np.sum(y)
             if ySum == 0 or ySum == y.shape[0]:
@@ -89,17 +90,43 @@ class RandomForest:
                 self.less_than_node.grow_tree(x[:,:min_gini_index+1],y[:min_gini_index+1],max_features,criterion,min_samples_leaf,min_samples_split,max_depth,self.depth)
                 self.greater_than_node = self.RFTreeNode()
                 self.less_than_node.grow_tree(x[:,min_gini_index+1:],y[min_gini_index+1:],max_features,criterion,min_samples_leaf,min_samples_split,max_depth,self.depth)     
+            elif criterion == 'entropy':
+                min_entropy_index = -1
+                min_entropy_argsort = np.zeros(x.shape[1])
+                min_entropy = float(x.shape[1]+2)
+                count = np.arange(1.0,float(x.shape[1]+1))
+                for iFtr in feature_indicies:
+                    xArgSort=x[iFtr,:].argsort()
+                    xSorted = x[xArgSort]
+                    ySorted = y[xArgSort]
+                    pLeft = np.cumsum(ySorted)/count
+                    pRight = np.cumsum(ySorted[::-1]/count)[::-1]      
+                    entropy = -count*sp.special.entr(pLeft)-(float(xSorted.shape[1]+1)-count)*sp.special.entr(pRight)
+                    indxArgMin = np.argmin(entropy[min_samples_leaf-1:giniImpurity.shape[0]-min_samples_leaf-1])+min_samples_leaf-1
+                    if entropy[indxArgMin] < min_entropy:
+                        self.split_feature_value = xSorted[indxArgMin]
+                        self.split_feature_index = iFtr
+                        min_entropy = entropy[indxArgMin]
+                        min_entropy_index = indxArgMin
+                        min_entropy_argsort = xArgSort
+                x=x[:,min_entropy_argsort]
+                y=y[min_entropy_argsort]
+                self.less_than_node = self.RFTreeNode()
+                self.less_than_node.grow_tree(x[:,:min_entropy_index+1],y[:min_entropy_index+1],max_features,criterion,min_samples_leaf,min_samples_split,max_depth,self.depth)
+                self.greater_than_node = self.RFTreeNode()
+                self.less_than_node.grow_tree(x[:,min_entropy_index+1:],y[min_entropy_index+1:],max_features,criterion,min_samples_leaf,min_samples_split,max_depth,self.depth) 
             else:
-                print('ENTROPY NOT IMPLEMENTED')
+                print('{} is not a supported cost function'.format(criterion))
+                return
             
         def predict(self,x):
             if self.prediction_value is not None:
                 return self.prediction_value
             else:
-                if x[self.split_feature_index] <= self.split_feature_value:
-                    return self.less_than_node.predict(x)
+                if x[self.split_feature_index] > self.split_feature_value:
+                    return self.greater_than_node.predict(x)
                 else:
-                    return self.greater_than_node.predict(x)           
+                    return self.less_than_node.predict(x)           
                 
         
     def fit(self,x,y):
