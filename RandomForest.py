@@ -72,7 +72,7 @@ class RandomForest:
                 count = np.arange(1.0,float(x.shape[1]+1))
                 for iFtr in feature_indicies:
                     xArgSort=x[iFtr,:].argsort()
-                    xSorted = x[xArgSort]
+                    xSorted = x[iFtr,xArgSort]
                     ySorted = y[xArgSort]
                     pLeft = np.cumsum(ySorted)/count
                     pRight = np.cumsum(ySorted[::-1]/count)[::-1]      
@@ -97,11 +97,11 @@ class RandomForest:
                 count = np.arange(1.0,float(x.shape[1]+1))
                 for iFtr in feature_indicies:
                     xArgSort=x[iFtr,:].argsort()
-                    xSorted = x[xArgSort]
+                    xSorted = x[iFtr,xArgSort]
                     ySorted = y[xArgSort]
                     pLeft = np.cumsum(ySorted)/count
                     pRight = np.cumsum(ySorted[::-1]/count)[::-1]      
-                    entropy = -count*sp.special.entr(pLeft)-(float(xSorted.shape[1]+1)-count)*sp.special.entr(pRight)
+                    entropy = count*sp.special.entr(pLeft)+(float(xSorted.shape[1]+1)-count)*sp.special.entr(pRight)
                     indxArgMin = np.argmin(entropy[min_samples_leaf-1:giniImpurity.shape[0]-min_samples_leaf-1])+min_samples_leaf-1
                     if entropy[indxArgMin] < min_entropy:
                         self.split_feature_value = xSorted[indxArgMin]
@@ -138,7 +138,7 @@ class RandomForest:
 
         for iEstimator in range(self.n_estimators):
             self.tree_base_node.append(self.RFTreeNode())
-            self.tree_base_node[-1].grow_tree(x,y,max_features,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0)
+            self.tree_base_node[-1].grow_tree(x.copy(),y.copy(),max_features,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0)
             
     def predict(self,x):
         if len(x.shape) == 1:
