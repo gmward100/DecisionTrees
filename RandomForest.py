@@ -60,7 +60,7 @@ class RandomForest:
                 self.prediction_value = y[0]
                 return
             
-            if x.shape[1] <= min_samples_split:
+            if x.shape[1] < min_samples_split or x.shape[1] < 2*min_samples_leaf:
                 self.prediction_value = np.mean(y)
                 return
             
@@ -135,10 +135,16 @@ class RandomForest:
             max_features = np.int32(np.ceil(np.sqrt(x.shape[0])))
             
         np.random.seed(self.random_state)
-
+        
         for iEstimator in range(self.n_estimators):
             self.tree_base_node.append(self.RFTreeNode())
-            self.tree_base_node[-1].grow_tree(x.copy(),y.copy(),max_features,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0)
+            if self.bootstrap == True:
+                bootstrapIndx = np.random.randint(0,x.shape[0],size=x.shape[0],dtype=np.int32)
+                xBootstrap = x[bootstrapIndx,:]
+                yBootstrap = y[bootstrapIndx]
+                self.tree_base_node[-1].grow_tree(xBootstrap,yBootstrap,max_features,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0)
+            else:
+                self.tree_base_node[-1].grow_tree(x.copy(),y.copy(),max_features,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0)
             
     def predict(self,x):
         if len(x.shape) == 1:
