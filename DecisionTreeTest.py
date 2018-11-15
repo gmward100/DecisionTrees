@@ -8,6 +8,7 @@ Created on Tue Nov 13 10:25:39 2018
 import numpy as np
 from RandomForest import RandomForest
 import pandas as pd
+from sklearn.model_selection import StratifiedKFold
 
 iris_data = pd.read_csv('Iris.csv', keep_default_na=False)
 iris_data['species'] = iris_data['species'].str.replace('setosa','1')
@@ -21,7 +22,22 @@ y = np.array(iris_data['species'].astype(np.float32))
 print(y)
 print(x)
 print(x.shape)
-#
-rf = RandomForest(criterion='entropy')
-#rf = RandomForest()
-rf.fit(x,y)
+
+skf = StratifiedKFold(n_splits=5, random_state=101, shuffle=False)
+print(skf.get_n_splits(x, y))
+np.random.seed(1001)
+for train_index, test_index in skf.split(x, y):
+    print("TRAIN:", train_index, "TEST:", test_index)
+    x_train, x_test = x[train_index], x[test_index]
+    y_train, y_test = y[train_index], y[test_index]  
+    rf = RandomForest()
+    #rf = RandomForest(criterion='entropy')
+    rf.fit(x_train,y_train)
+    y_pred = rf.predict(x_test)
+
+    print('prediction = ')
+    print(y_pred)
+    print('truth = ')
+    print(y_test)
+    print('avg error')
+    print(np.mean((y_pred-y_test)**2))

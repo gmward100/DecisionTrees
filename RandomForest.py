@@ -60,11 +60,12 @@ class RandomForest:
                 self.prediction_value = y[0]
                 return
             
-            if x.shape[1] < min_samples_split or x.shape[1] < 2*min_samples_leaf:
+            if x.shape[0] < min_samples_split or x.shape[0] < 2*min_samples_leaf:
                 self.prediction_value = np.mean(y)
                 return
-            
-            feature_indicies = np.random.randint(0,x.shape[1],size=max_features)
+            feature_indicies = np.arange(x.shape[1])
+            np.random.shuffle(feature_indicies)
+            #feature_indicies = np.random.randint(0,x.shape[1],size=max_features)
             if criterion == 'gini':
                 min_gini_index = -1
                 min_gini_argsort = np.zeros(x.shape[0])
@@ -75,15 +76,19 @@ class RandomForest:
                     xSorted = x[xArgSort,iFtr]
                     ySorted = y[xArgSort]
                     pLeft = np.cumsum(ySorted)/count
-                    pRight = np.cumsum(ySorted[::-1]/count)[::-1]      
-                    giniImpurity = count*pLeft*(1.0-pLeft)+(float(xSorted.shape[0]+1)-count)*pRight*(1.0-pRight)
-                    indxArgMin = np.argmin(giniImpurity[min_samples_leaf-1:giniImpurity.shape[0]-min_samples_leaf-1])+min_samples_leaf-1
+                    pRight = np.cumsum(ySorted[::-1])/count
+                    pRight = pRight[::-1]
+                    giniImpurity = count*pLeft*(1.0-pLeft)+(float(ySorted.shape[0]+1)-count)*pRight*(1.0-pRight)
+                    indxArgMin = np.argmin(giniImpurity[min_samples_leaf-1:giniImpurity.shape[0]-min_samples_leaf+1])+min_samples_leaf-1
+                    print(indxArgMin)
                     if giniImpurity[indxArgMin] < min_gini_impurity:
                         self.split_feature_value = xSorted[indxArgMin]
                         self.split_feature_index = iFtr
                         min_gini_impurity = giniImpurity[indxArgMin]
                         min_gini_index = indxArgMin
                         min_gini_argsort = xArgSort
+                    if iFtr >= max_features-1:
+                        break
                 x=x[min_gini_argsort,:]
                 y=y[min_gini_argsort]
                 self.less_than_node = RandomForest.RFTreeNode()
@@ -100,15 +105,18 @@ class RandomForest:
                     xSorted = x[xArgSort,iFtr]
                     ySorted = y[xArgSort]
                     pLeft = np.cumsum(ySorted)/count
-                    pRight = np.cumsum(ySorted[::-1]/count)[::-1]      
-                    entropy = count*sp.special.entr(pLeft)+(float(xSorted.shape[0]+1)-count)*sp.special.entr(pRight)
-                    indxArgMin = np.argmin(entropy[min_samples_leaf-1:entropy.shape[0]-min_samples_leaf-1])+min_samples_leaf-1
+                    pRight = np.cumsum(ySorted[::-1])/count
+                    pRight = pRight[::-1]     
+                    entropy = count*sp.special.entr(pLeft)+(float(ySorted.shape[0]+1)-count)*sp.special.entr(pRight)
+                    indxArgMin = np.argmin(entropy[min_samples_leaf-1:entropy.shape[0]-min_samples_leaf+1])+min_samples_leaf-1
                     if entropy[indxArgMin] < min_entropy:
                         self.split_feature_value = xSorted[indxArgMin]
                         self.split_feature_index = iFtr
                         min_entropy = entropy[indxArgMin]
                         min_entropy_index = indxArgMin
                         min_entropy_argsort = xArgSort
+                    if iFtr >= max_features-1:
+                        break                        
                 x=x[min_entropy_argsort,:]
                 y=y[min_entropy_argsort]
                 self.less_than_node = RandomForest.RFTreeNode()
@@ -132,7 +140,7 @@ class RandomForest:
     def fit(self,x,y):
         max_features = self.max_features
         if type(self.max_features) == str:
-            max_features = np.int32(np.ceil(np.sqrt(x.shape[0])))
+            max_features = np.int32(np.ceil(np.sqrt(x.shape[1])))
             
         np.random.seed(self.random_state)
         
@@ -153,7 +161,7 @@ class RandomForest:
                 prediction+=self.tree_base_node[iEstimator].predict(x)
             return prediction/float(self.n_estimators)
         else:
-            prediction = np.zeros(x.shape[1])
+            prediction = np.zeros(x.shape[0])
             for iEstimator in range(self.n_estimators):
-                prediction+=np.array([self.tree_base_node[iEstimator].predict(x[indx,:]) for indx in range(x.shape[1])])
+                prediction+=np.array([self.tree_base_node[iEstimator].predict(x[indx,:]) for indx in range(x.shape[0])])
             return prediction/float(self.n_estimators)
