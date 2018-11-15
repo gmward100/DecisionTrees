@@ -77,7 +77,7 @@ class RandomForest:
                     pLeft = np.cumsum(ySorted)/count
                     pRight = np.cumsum(ySorted[::-1])/count
                     pRight = pRight[::-1]
-                    giniImpurity = count*pLeft*(1.0-pLeft)+(float(ySorted.shape[0]+1)-count)*pRight*(1.0-pRight)
+                    giniImpurity = count*pLeft*(1.0-pLeft)+(float(ySorted.shape[0]+1)-count)*pRight*(1.0-pRight)                 
                     indxArgMin = np.argmin(giniImpurity[min_samples_leaf-1:giniImpurity.shape[0]-min_samples_leaf+1])+min_samples_leaf-1
                     if giniImpurity[indxArgMin] < min_gini_impurity:
                         self.split_feature_value = xSorted[indxArgMin]
@@ -105,7 +105,7 @@ class RandomForest:
                     pLeft = np.cumsum(ySorted)/count
                     pRight = np.cumsum(ySorted[::-1])/count
                     pRight = pRight[::-1]     
-                    entropy = count*sp.special.entr(pLeft)+(float(ySorted.shape[0]+1)-count)*sp.special.entr(pRight)
+                    entropy = count*(sp.special.entr(pLeft)+sp.special.entr(1.0-pLeft))+(float(ySorted.shape[0]+1)-count)*(sp.special.entr(pRight)+sp.special.entr(1.0-pRight))
                     indxArgMin = np.argmin(entropy[min_samples_leaf-1:entropy.shape[0]-min_samples_leaf+1])+min_samples_leaf-1
                     if entropy[indxArgMin] < min_entropy:
                         self.split_feature_value = xSorted[indxArgMin]
