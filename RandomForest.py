@@ -42,8 +42,8 @@ class RandomForest:
         def __init__(self):
             self.split_feature_index = -1
             self.split_feature_value = None
-            self.less_than_node = 0
-            self.greater_than_node = 0
+            self.less_than_node = None
+            self.greater_than_node = None
             self.prediction_value = None
             self.depth = 0
             
@@ -80,7 +80,6 @@ class RandomForest:
                     pRight = pRight[::-1]
                     giniImpurity = count*pLeft*(1.0-pLeft)+(float(ySorted.shape[0]+1)-count)*pRight*(1.0-pRight)
                     indxArgMin = np.argmin(giniImpurity[min_samples_leaf-1:giniImpurity.shape[0]-min_samples_leaf+1])+min_samples_leaf-1
-                    print(indxArgMin)
                     if giniImpurity[indxArgMin] < min_gini_impurity:
                         self.split_feature_value = xSorted[indxArgMin]
                         self.split_feature_index = iFtr
@@ -94,7 +93,7 @@ class RandomForest:
                 self.less_than_node = RandomForest.RFTreeNode()
                 self.less_than_node.grow_tree(x[:min_gini_index+1,:],y[:min_gini_index+1],max_features,criterion,min_samples_leaf,min_samples_split,max_depth,self.depth)
                 self.greater_than_node = RandomForest.RFTreeNode()
-                self.less_than_node.grow_tree(x[min_gini_index+1:,:],y[min_gini_index+1:],max_features,criterion,min_samples_leaf,min_samples_split,max_depth,self.depth)     
+                self.greater_than_node.grow_tree(x[min_gini_index+1:,:],y[min_gini_index+1:],max_features,criterion,min_samples_leaf,min_samples_split,max_depth,self.depth)     
             elif criterion == 'entropy':
                 min_entropy_index = -1
                 min_entropy_argsort = np.zeros(x.shape[0])
@@ -122,12 +121,13 @@ class RandomForest:
                 self.less_than_node = RandomForest.RFTreeNode()
                 self.less_than_node.grow_tree(x[:min_entropy_index+1,:],y[:min_entropy_index+1],max_features,criterion,min_samples_leaf,min_samples_split,max_depth,self.depth)
                 self.greater_than_node = RandomForest.RFTreeNode()
-                self.less_than_node.grow_tree(x[min_entropy_index+1:,:],y[min_entropy_index+1:],max_features,criterion,min_samples_leaf,min_samples_split,max_depth,self.depth) 
+                self.greater_than_node.grow_tree(x[min_entropy_index+1:,:],y[min_entropy_index+1:],max_features,criterion,min_samples_leaf,min_samples_split,max_depth,self.depth) 
             else:
                 print('{} is not a supported cost function'.format(criterion))
                 return
             
         def predict(self,x):
+            #print(self.depth)
             if self.prediction_value is not None:
                 return self.prediction_value
             else:
@@ -150,18 +150,21 @@ class RandomForest:
                 bootstrapIndx = np.random.randint(0,x.shape[0],size=x.shape[0],dtype=np.int32)
                 xBootstrap = x[bootstrapIndx,:]
                 yBootstrap = y[bootstrapIndx]
-                self.tree_base_node[-1].grow_tree(xBootstrap,yBootstrap,max_features,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0)
+                self.tree_base_node[iEstimator].grow_tree(xBootstrap,yBootstrap,max_features,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0)
             else:
-                self.tree_base_node[-1].grow_tree(x.copy(),y.copy(),max_features,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0)
+                self.tree_base_node[iEstimator].grow_tree(x.copy(),y.copy(),max_features,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0)
             
     def predict(self,x):
+       # print('predict')
         if len(x.shape) == 1:
             prediction = 0.0
             for iEstimator in range(self.n_estimators):
+                #print('Estimator {}'.format(iEstimator))                
                 prediction+=self.tree_base_node[iEstimator].predict(x)
             return prediction/float(self.n_estimators)
         else:
             prediction = np.zeros(x.shape[0])
             for iEstimator in range(self.n_estimators):
+                #print('Estimator {}'.format(iEstimator))
                 prediction+=np.array([self.tree_base_node[iEstimator].predict(x[indx,:]) for indx in range(x.shape[0])])
             return prediction/float(self.n_estimators)

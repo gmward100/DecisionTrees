@@ -36,8 +36,9 @@ for train_index, test_index in skf.split(x, y):
     y_pred = rf.predict(x_test)
 
     print('prediction = ')
-    print(y_pred)
+    print(y_pred[0:10])
+    print(y_pred[-10:])    
     print('truth = ')
-    print(y_test)
-    print('avg error')
-    print(np.mean((y_pred-y_test)**2))
+    print(y_test[0:10])
+    print(y_test[-10:])
+    print('Avg test error = {}'.format(np.mean((y_pred-y_test)**2)))
