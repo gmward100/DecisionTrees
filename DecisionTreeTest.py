@@ -31,8 +31,8 @@ for train_index, test_index in skf.split(x, y):
     print("TRAIN:", train_index, "TEST:", test_index)
     x_train, x_test = x[train_index], x[test_index]
     y_train, y_test = y[train_index], y[test_index]  
-    #rf = RandomForest(n_estimators=100)
-    rf = RandomForest(n_estimators=100,criterion='entropy')
+    rf = RandomForest(n_estimators=100)
+    #rf = RandomForest(n_estimators=100,criterion='entropy')
     rf.fit(x_train,y_train)
     y_pred = rf.predict(x_test)
 
@@ -44,7 +44,8 @@ for train_index, test_index in skf.split(x, y):
     print(y_test[-10:])
     print('Avg test error = {}'.format(np.mean((y_pred-y_test)**2)))
     
-    rfsk = RandomForestClassifier(n_estimators=100,criterion='entropy')
+    rfsk = RandomForestClassifier(n_estimators=100)
+    #rfsk = RandomForestClassifier(n_estimators=100,criterion='entropy')    
     rfsk.fit(x_train,y_train)
     y_pred = rfsk.predict_proba(x_test)
     print(y_pred[0:10,1])
