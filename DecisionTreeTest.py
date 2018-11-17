@@ -20,6 +20,13 @@ iris_data['species'] = iris_data['species'].str.replace('virginica','0')
 x = np.array(iris_data[iris_data.columns[0:4]].values,dtype=np.float32)
 y = np.array(iris_data['species'].astype(np.float32))
 
+nRandom = 10
+x_rand = np.reshape(np.random.uniform(-2.0,2.0,nRandom*x.shape[0]),[x.shape[0], nRandom])
+x_new = np.zeros([x.shape[0],nRandom+x.shape[1]])
+x_new[:,0:4] = x[:,:]
+x_new[:,4:] = x_rand[:,:]
+x = x_new
+
 print(y)
 print(x)
 print(x.shape)
