@@ -65,88 +65,51 @@ class RandomForest:
             feature_indicies = np.arange(x.shape[1])
             np.random.shuffle(feature_indicies)
             #feature_indicies = np.random.randint(0,x.shape[1],size=max_features)
-            if criterion == 'gini':
-                min_gini_impurity = float(x.shape[0]+2)
-                iFtrCount = 0
-                for iFtr in feature_indicies:
-                    xUniqueSorted, reverseIndex, counts = np.unique(x[:,iFtr],return_inverse=True,return_counts=True)
-                    yUniqueSum = np.zeros(xUniqueSorted.shape[0])
-                    for iy in range(y.shape[0]):
-                        yUniqueSum[reverseIndex[iy]]+=y[iy]
-                    #yUniqueSum[reverseIndex]+=y
-                    leftCumulativeCount = np.cumsum(counts)
-                    rightCumulativeCount = np.cumsum(counts[::-1])
-                    pLeft = np.cumsum(yUniqueSum)/leftCumulativeCount
-                    pRight = np.cumsum(yUniqueSum[::-1])/rightCumulativeCount
-                    left_sample_start = np.argmax(leftCumulativeCount > min_samples_leaf)                    
-                    right_sample_stop = rightCumulativeCount.shape[0]-1-np.argmax(rightCumulativeCount > min_samples_leaf)
-                    pRight = pRight[::-1]
-                    rightCumulativeCount = rightCumulativeCount[::-1]
-                    if left_sample_start >= right_sample_stop:
-                        continue                    
-                    giniImpurity = 2.0*(leftCumulativeCount*pLeft*(1.0-pLeft)+rightCumulativeCount*pRight*(1.0-pRight))
-                    indxArgMin = np.argmin(giniImpurity[left_sample_start:right_sample_stop])+left_sample_start
-                    if giniImpurity[indxArgMin] < min_gini_impurity:
-                        self.split_feature_value = xUniqueSorted[indxArgMin]
-                        self.split_feature_index = iFtr
-                        min_gini_impurity = giniImpurity[indxArgMin]
-                    iFtrCount+=1
-                    if iFtrCount >= max_features:
-                        break
-                if iFtrCount == 0:
-                    self.prediction_value = np.mean(y)
-                    return                    
-                min_gini_argsort=x[:,self.split_feature_index].argsort()
-                x=x[min_gini_argsort,:]
-                y=y[min_gini_argsort]
-                min_gini_index = np.argmax(x[:,self.split_feature_index]>self.split_feature_value)
-                self.less_than_node = RandomForest.RFTreeNode()
-                self.less_than_node.grow_tree(x[:min_gini_index,:],y[:min_gini_index],max_features,criterion,min_samples_leaf,min_samples_split,max_depth,self.depth)
-                self.greater_than_node = RandomForest.RFTreeNode()
-                self.greater_than_node.grow_tree(x[min_gini_index:,:],y[min_gini_index:],max_features,criterion,min_samples_leaf,min_samples_split,max_depth,self.depth)     
-            elif criterion == 'entropy':
-                min_entropy = float(x.shape[0]+2)
-                iFtrCount = 0
-                for iFtr in feature_indicies:
-                    xUniqueSorted, reverseIndex, counts = np.unique(x[:,iFtr],return_inverse=True,return_counts=True)
-                    yUniqueSum = np.zeros(xUniqueSorted.shape[0])
-                    for iy in range(y.shape[0]):
-                        yUniqueSum[reverseIndex[iy]]+=y[iy]
-                    #yUniqueSum[reverseIndex]+=y
-                    leftCumulativeCount = np.cumsum(counts)
-                    rightCumulativeCount = np.cumsum(counts[::-1])
-                    pLeft = np.cumsum(yUniqueSum)/leftCumulativeCount
-                    pRight = np.cumsum(yUniqueSum[::-1])/rightCumulativeCount
-                    left_sample_start = np.argmax(leftCumulativeCount > min_samples_leaf)                    
-                    right_sample_stop = rightCumulativeCount.shape[0]-1-np.argmax(rightCumulativeCount > min_samples_leaf)
-                    pRight = pRight[::-1]
-                    rightCumulativeCount = rightCumulativeCount[::-1]
-                    if left_sample_start >= right_sample_stop:
-                        continue                    
-                    entropy = leftCumulativeCount*(sp.special.entr(pLeft)+sp.special.entr(1.0-pLeft))+rightCumulativeCount*(sp.special.entr(pRight)+sp.special.entr(1.0-pRight))
-                    indxArgMin = np.argmin(entropy[left_sample_start:right_sample_stop])+left_sample_start
-                    if entropy[indxArgMin] < min_entropy:
-                        self.split_feature_value = xUniqueSorted[indxArgMin]
-                        self.split_feature_index = iFtr
-                        min_entropy = entropy[indxArgMin]
-                    iFtrCount+=1
-                    if iFtrCount >= max_features:
-                        break
-                if iFtrCount == 0:
-                    self.prediction_value = np.mean(y)
-                    return                    
-                min_entropy_argsort=x[:,self.split_feature_index].argsort()
-                x=x[min_entropy_argsort,:]
-                y=y[min_entropy_argsort]
-                min_entropy_index = np.argmax(x[:,self.split_feature_index]>self.split_feature_value)
-                self.less_than_node = RandomForest.RFTreeNode()
-                self.less_than_node.grow_tree(x[:min_entropy_index,:],y[:min_entropy_index],max_features,criterion,min_samples_leaf,min_samples_split,max_depth,self.depth)
-                self.greater_than_node = RandomForest.RFTreeNode()
-                self.greater_than_node.grow_tree(x[min_entropy_index:,:],y[min_entropy_index:],max_features,criterion,min_samples_leaf,min_samples_split,max_depth,self.depth)
-            else:
-                print('{} is not a supported cost function'.format(criterion))
-                return
-            
+            min_cost = float(x.shape[0]+2)
+            iFtrCount = 0
+            for iFtr in feature_indicies:
+                xUniqueSorted, reverseIndex, counts = np.unique(x[:,iFtr],return_inverse=True,return_counts=True)
+                yUniqueSum = np.zeros(xUniqueSorted.shape[0])
+                for iy in range(y.shape[0]):
+                    yUniqueSum[reverseIndex[iy]]+=y[iy]
+                #yUniqueSum[reverseIndex]+=y
+                leftCumulativeCount = np.cumsum(counts)
+                rightCumulativeCount = np.cumsum(counts[::-1])
+                pLeft = np.cumsum(yUniqueSum)/leftCumulativeCount
+                pRight = np.cumsum(yUniqueSum[::-1])/rightCumulativeCount
+                left_sample_start = np.argmax(leftCumulativeCount >= min_samples_leaf)                    
+                right_sample_stop = rightCumulativeCount.shape[0]-1-np.argmax(rightCumulativeCount >= min_samples_leaf)
+                pRight = pRight[::-1]
+                rightCumulativeCount = rightCumulativeCount[::-1]
+                if left_sample_start >= right_sample_stop:
+                    continue
+                if criterion == 'gini':
+                    costFunction = 2.0*(leftCumulativeCount*pLeft*(1.0-pLeft)+rightCumulativeCount*pRight*(1.0-pRight))
+                elif criterion == 'entropy':
+                    costFunction = leftCumulativeCount*(sp.special.entr(pLeft)+sp.special.entr(1.0-pLeft))+rightCumulativeCount*(sp.special.entr(pRight)+sp.special.entr(1.0-pRight))
+                else:
+                    print('{} is not a supported cost function'.format(criterion))
+                    return                        
+                indxArgMin = np.argmin(costFunction[left_sample_start:right_sample_stop])+left_sample_start
+                if costFunction[indxArgMin] < min_cost:
+                    self.split_feature_value = xUniqueSorted[indxArgMin]
+                    self.split_feature_index = iFtr
+                    min_cost = costFunction[indxArgMin]
+                iFtrCount+=1
+                if iFtrCount >= max_features:
+                    break
+            if iFtrCount == 0:
+                self.prediction_value = np.mean(y)
+                return                    
+            min_cost_argsort=x[:,self.split_feature_index].argsort()
+            x=x[min_cost_argsort,:]
+            y=y[min_cost_argsort]
+            min_costi_index = np.argmax(x[:,self.split_feature_index]>self.split_feature_value)
+            self.less_than_node = RandomForest.RFTreeNode()
+            self.less_than_node.grow_tree(x[:min_costi_index,:],y[:min_costi_index],max_features,criterion,min_samples_leaf,min_samples_split,max_depth,self.depth)
+            self.greater_than_node = RandomForest.RFTreeNode()
+            self.greater_than_node.grow_tree(x[min_costi_index:,:],y[min_costi_index:],max_features,criterion,min_samples_leaf,min_samples_split,max_depth,self.depth)
+        
         def predict(self,x):
             #print(self.depth)
             if self.prediction_value is not None:

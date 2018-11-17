@@ -35,7 +35,7 @@ skf = StratifiedKFold(n_splits=5, random_state=101, shuffle=False)
 print(skf.get_n_splits(x, y))
 np.random.seed(1001)
 for train_index, test_index in skf.split(x, y):
-    print("TRAIN:", train_index, "TEST:", test_index)
+    print("TRAIN:", train_index[:10], "TEST:", test_index[:10])
     x_train, x_test = x[train_index], x[test_index]
     y_train, y_test = y[train_index], y[test_index]  
     rf = RandomForest(n_estimators=100)
