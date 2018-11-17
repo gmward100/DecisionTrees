@@ -69,6 +69,8 @@ class RandomForest:
             iFtrCount = 0
             for iFtr in feature_indicies:
                 xUniqueSorted, reverseIndex, counts = np.unique(x[:,iFtr],return_inverse=True,return_counts=True)
+                if xUniqueSorted.shape[0] == 1:
+                    continue
                 yUniqueSum = np.zeros(xUniqueSorted.shape[0])
                 for iy in range(y.shape[0]):
                     yUniqueSum[reverseIndex[iy]]+=y[iy]

@@ -25,15 +25,15 @@ x_rand = np.reshape(np.random.uniform(-2.0,2.0,nRandom*x.shape[0]),[x.shape[0], 
 x_new = np.zeros([x.shape[0],nRandom+x.shape[1]])
 x_new[:,0:4] = x[:,:]
 x_new[:,4:] = x_rand[:,:]
-x = x_new
+#x = x_new
 
 print(y)
 print(x)
 print(x.shape)
 
-skf = StratifiedKFold(n_splits=5, random_state=101, shuffle=False)
+skf = StratifiedKFold(n_splits=5, random_state=1331, shuffle=False)
 print(skf.get_n_splits(x, y))
-np.random.seed(1001)
+np.random.seed(111)
 for train_index, test_index in skf.split(x, y):
     print("TRAIN:", train_index[:10], "TEST:", test_index[:10])
     x_train, x_test = x[train_index], x[test_index]
