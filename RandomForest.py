@@ -94,7 +94,7 @@ class RandomForest:
                     return                        
                 indxArgMin = np.argmin(costFunction[left_sample_start:right_sample_stop])+left_sample_start
                 if costFunction[indxArgMin] < min_cost:
-                    self.split_feature_value = xUniqueSorted[indxArgMin]
+                    self.split_feature_value = 0.5*(xUniqueSorted[indxArgMin]+xUniqueSorted[indxArgMin+1])
                     self.split_feature_index = iFtr
                     min_cost = costFunction[indxArgMin]
                 iFtrCount+=1
