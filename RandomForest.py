@@ -179,7 +179,7 @@ class RandomForest:
                 xBootstrap,yBootstrap = resample(x,y_encoded)
                 self.tree_base_node_list[iEstimator].grow_tree(xBootstrap,yBootstrap,max_features,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0)
             else:
-                self.tree_base_node_list[iEstimator].grow_tree(x.copy(),y.copy(),max_features,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0)
+                self.tree_base_node_list[iEstimator].grow_tree(x.copy(),y_encoded.copy(),max_features,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0)
             
     def predict(self,x):  
        # print('predict')
