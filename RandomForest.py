@@ -86,9 +86,9 @@ class RandomForest:
                 if left_sample_start >= right_sample_stop:
                     continue
                 if criterion == 'gini':
-                    costFunction = 2.0*(leftCumulativeCount*pLeft*(1.0-pLeft)+rightCumulativeCount*pRight*(1.0-pRight))
+                    costFunction = 2.0*(leftCumulativeCount[:-1]*pLeft[:-1]*(1.0-pLeft[:-1])+rightCumulativeCount[1:]*pRight[1:]*(1.0-pRight[1:]))
                 elif criterion == 'entropy':
-                    costFunction = leftCumulativeCount*(sp.special.entr(pLeft)+sp.special.entr(1.0-pLeft))+rightCumulativeCount*(sp.special.entr(pRight)+sp.special.entr(1.0-pRight))
+                    costFunction = leftCumulativeCount[:-1]*(sp.special.entr(pLeft[:-1])+sp.special.entr(1.0-pLeft[:-1]))+rightCumulativeCount[1:]*(sp.special.entr(pRight[1:])+sp.special.entr(1.0-pRight[1:]))
                 else:
                     print('{} is not a supported cost function'.format(criterion))
                     return                        
