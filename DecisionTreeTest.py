@@ -12,13 +12,15 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.ensemble import RandomForestClassifier
 
 iris_data = pd.read_csv('Iris.csv', keep_default_na=False)
-iris_data['species'] = iris_data['species'].str.replace('setosa','1')
-iris_data['species'] = iris_data['species'].str.replace('versicolor','0')
-iris_data['species'] = iris_data['species'].str.replace('virginica','0')
+#iris_data['species'] = iris_data['species'].str.replace('setosa','1')
+#iris_data['species'] = iris_data['species'].str.replace('versicolor','0')
+#iris_data['species'] = iris_data['species'].str.replace('virginica','0')
 
 #x = iris_data.as_matrix(columns=['sepal_length','sepal_width','petal_length','petal_width'])
 x = np.array(iris_data[iris_data.columns[0:4]].values,dtype=np.float32)
-y = np.array(iris_data['species'].astype(np.float32))
+#y = np.array(iris_data['species'].astype(np.float32))
+y = np.array(iris_data['species'])
+
 
 nRandom = 10
 x_rand = np.reshape(np.random.uniform(-2.0,2.0,nRandom*x.shape[0]),[x.shape[0], nRandom])
@@ -38,24 +40,35 @@ for train_index, test_index in skf.split(x, y):
     print("TRAIN:", train_index[:10], "TEST:", test_index[:10])
     x_train, x_test = x[train_index], x[test_index]
     y_train, y_test = y[train_index], y[test_index]  
-    #rf = RandomForest(n_estimators=100)
-    rf = RandomForest(n_estimators=100,criterion='entropy')
+    rf = RandomForest(n_estimators=100)
+    #rf = RandomForest(n_estimators=100,criterion='entropy')
     rf.fit(x_train,y_train)
     y_pred = rf.predict(x_test)
+    print('classes =',rf.classes)
 
+    y_test_float = np.zeros([x_test.shape[0],3])
+    for ix in range(x_test.shape[0]):
+        for iclass in range(len(rf.classes)):
+            if y_test[ix] == rf.classes[iclass]:
+                y_test_float[ix,iclass]=1.0
+                break
+    
     print('prediction = ')
-    print(y_pred[0:10])
-    print(y_pred[-10:])    
+    print(y_pred[0:10,:])
+    print(y_pred[-10:,:])    
     print('truth = ')
     print(y_test[0:10])
     print(y_test[-10:])
-    print('Avg test error = {}'.format(np.mean((y_pred-y_test)**2)))
+    #print(y_test)
+    print(y_test_float[0:10,:])
+    print(y_test_float[-10:,:])    
+    print('Avg test error = {}'.format(np.mean((y_pred-y_test_float)**2)))
     
-    #rfsk = RandomForestClassifier(n_estimators=100)
-    rfsk = RandomForestClassifier(n_estimators=100,criterion='entropy')    
-    rfsk.fit(x_train,y_train)
-    y_pred = rfsk.predict_proba(x_test)
-    print(y_pred[0:10,1])
-    print(y_pred[-10:,1])        
-    print('sklearn avg test error = {}'.format(np.mean((y_pred[:,1]-y_test)**2)))
+#    rfsk = RandomForestClassifier(n_estimators=100)
+#    #rfsk = RandomForestClassifier(n_estimators=100,criterion='entropy')    
+#    rfsk.fit(x_train,y_train)
+#    y_pred = rfsk.predict_proba(x_test)
+#    print(y_pred[0:10,1])
+#    print(y_pred[-10:,1])        
+#    print('sklearn avg test error = {}'.format(np.mean((y_pred[:,1]-y_test)**2)))
     print('-------------------------------')
