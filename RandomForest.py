@@ -7,6 +7,7 @@ Created on Wed Nov  13 09:43:52 2018
 
 import numpy as np
 import scipy as sp
+from sklearn.utils import resample
 # Random Forest Classifier Algorithm
 class RandomForest:
     
@@ -165,15 +166,17 @@ class RandomForest:
         max_features = self.max_features
         if type(self.max_features) == str:
             max_features = np.int32(np.ceil(np.sqrt(x.shape[1])))
-            
+        if max_features > x.shape[1]:
+            max_features = x.shape[1]
         np.random.seed(self.random_state)
         
         for iEstimator in range(self.n_estimators):
             self.tree_base_node_list.append(self.RFTreeNode())
             if self.bootstrap == True:
-                bootstrapIndx = np.random.randint(0,x.shape[0],size=x.shape[0],dtype=np.int32)
-                xBootstrap = x[bootstrapIndx,:]
-                yBootstrap = y_encoded[bootstrapIndx]
+                #bootstrapIndx = np.random.randint(0,x.shape[0],size=x.shape[0],dtype=np.int32)
+                #xBootstrap = x[bootstrapIndx,:]
+                #yBootstrap = y_encoded[bootstrapIndx,:]
+                xBootstrap,yBootstrap = resample(x,y_encoded)
                 self.tree_base_node_list[iEstimator].grow_tree(xBootstrap,yBootstrap,max_features,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0)
             else:
                 self.tree_base_node_list[iEstimator].grow_tree(x.copy(),y.copy(),max_features,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0)
