@@ -188,7 +188,7 @@ class RandomForest:
                 #xBootstrap, yBootstrap = resample(x,y_encoded)
                 self.tree_base_node_list[iEstimator].grow_tree(xBootstrap,yBootstrap,max_features,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0)
                 if self.oob_score == True:
-                    oob_indicies = np.where(np.isin(sample_range,bootstrapIndx))[0]
+                    oob_indicies = np.where(np.isin(sample_range,bootstrapIndx) == False)[0]
                     if len(oob_indicies) > 0:
                         oob_counts[oob_indicies] += 1.0
                         x_oob = x[oob_indicies,:]
