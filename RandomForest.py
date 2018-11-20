@@ -37,7 +37,8 @@ class RandomForest:
         self.n_jobs = n_jobs
         self.random_state = random_state
         self.tree_base_node_list = []
-        self.classes = []
+        self.classes = []  
+        self.oob_error = 0.0
         
     class RFTreeNode:
         def __init__(self):
@@ -169,18 +170,44 @@ class RandomForest:
         if max_features > x.shape[1]:
             max_features = x.shape[1]
         np.random.seed(self.random_state)
-        
+        oob_pred = 0
+        oob_counts = 0
+        sample_range = 0
+        if self.oob_score == True:
+            oob_pred = np.zeros([x.shape[0],y_encoded.shape[1]],dtype=np.float32)
+            oob_counts = np.zeros(x.shape[0],dtype=np.float32)    
+            sample_range = np.arange(x.shape[0],dtype=np.int32)
+            
         for iEstimator in range(self.n_estimators):
             self.tree_base_node_list.append(self.RFTreeNode())
             if self.bootstrap == True:
-                #bootstrapIndx = np.random.randint(0,x.shape[0],size=x.shape[0],dtype=np.int32)
-                #xBootstrap = x[bootstrapIndx,:]
-                #yBootstrap = y_encoded[bootstrapIndx,:]
-                xBootstrap,yBootstrap = resample(x,y_encoded)
+                #bootstrapIndx = np.random.choice(x.shape[0],x.shape[0])
+                bootstrapIndx = np.random.randint(0,x.shape[0],size=x.shape[0])
+                xBootstrap = x[bootstrapIndx,:]
+                yBootstrap = y_encoded[bootstrapIndx,:]
+                #xBootstrap, yBootstrap = resample(x,y_encoded)
                 self.tree_base_node_list[iEstimator].grow_tree(xBootstrap,yBootstrap,max_features,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0)
+                if self.oob_score == True:
+                    oob_indicies = np.where(np.isin(sample_range,bootstrapIndx))[0]
+                    if len(oob_indicies) > 0:
+                        oob_counts[oob_indicies] += 1.0
+                        x_oob = x[oob_indicies,:]
+                        for indx in range(x_oob.shape[0]):
+                            oob_pred[oob_indicies[indx],:]+=self.tree_base_node_list[iEstimator].predict(x_oob[indx,:])         
             else:
                 self.tree_base_node_list[iEstimator].grow_tree(x.copy(),y_encoded.copy(),max_features,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0)
-            
+        if self.oob_score == True:
+            oob_indicies = np.where(oob_counts > 0)[0]
+            if len(oob_indicies) > 0:
+                oob_pred = oob_pred[oob_indicies,:]
+                oob_counts = oob_counts[oob_indicies]
+                oob_y_encoded = y_encoded[oob_indicies,:]
+                for iclass in range(y_encoded.shape[1]):
+                    oob_pred[:,iclass]/=oob_counts
+                self.oob_error=np.mean((oob_y_encoded-oob_pred)**2)
+            else:
+                print('No samples out of bag')
+                
     def predict(self,x):  
        # print('predict')
         if len(x.shape) == 1:
