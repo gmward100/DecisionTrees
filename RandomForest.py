@@ -49,7 +49,7 @@ class RandomForest:
             self.prediction = None
             self.depth = 0
             
-        def grow_tree(self,x,y,max_features,criterion,min_samples_leaf,min_samples_split,max_depth,depth):
+        def grow_tree(self,x,y,max_features,criterion,min_samples_leaf,min_samples_split,max_depth,depth,min_impurity_decrease,n_samples_total):
             
             self.depth = depth+1
             if max_depth is not None:
@@ -69,7 +69,7 @@ class RandomForest:
             feature_indicies = np.arange(x.shape[1])
             np.random.shuffle(feature_indicies)
             #feature_indicies = np.random.randint(0,x.shape[1],size=max_features)
-            min_cost = float(x.shape[0]+2)
+            min_impurity = float(x.shape[0]+2)
             iFtrCount = 0
             for iFtr in feature_indicies:
                 xUniqueSorted, reverseIndex, counts = np.unique(x[:,iFtr],return_inverse=True,return_counts=True)
@@ -93,31 +93,36 @@ class RandomForest:
                 if left_sample_start >= right_sample_stop:
                     continue
                 if criterion == 'gini':
-                    costFunction = leftCumulativeCount[:-1]*(1.0-np.sum(pLeft[:-1,:]**2,axis=1))+rightCumulativeCount[1:]*(1.0-np.sum(pRight[1:,:]**2,axis=1))
+                    impurity_zero = 1.0-np.sum(pLeft[-1,:]**2)
+                    impurity = leftCumulativeCount[:-1]*(1.0-np.sum(pLeft[:-1,:]**2,axis=1))+rightCumulativeCount[1:]*(1.0-np.sum(pRight[1:,:]**2,axis=1))
                 elif criterion == 'entropy':
-                    costFunction = leftCumulativeCount[:-1]*np.sum(sp.special.entr(pLeft[:-1,:]),axis=1)+rightCumulativeCount[1:]*np.sum(sp.special.entr(pRight[1:,:]),axis=1)
+                    impurity_zero = np.sum(sp.special.entr(pLeft[-1,:]))          
+                    impurity = leftCumulativeCount[:-1]*np.sum(sp.special.entr(pLeft[:-1,:]),axis=1)+rightCumulativeCount[1:]*np.sum(sp.special.entr(pRight[1:,:]),axis=1)
                 else:
-                    print('{} is not a supported cost function'.format(criterion))
+                    print('{} is not a supported impurity function'.format(criterion))
                     return                        
-                indxArgMin = np.argmin(costFunction[left_sample_start:right_sample_stop])+left_sample_start
-                if costFunction[indxArgMin] < min_cost:
+                indxArgMin = np.argmin(impurity[left_sample_start:right_sample_stop])+left_sample_start
+                impurity_decrease = (float(rightCumulativeCount[0])/float(n_samples_total))*(impurity_zero - impurity[indxArgMin]/float(rightCumulativeCount[0]))
+                if impurity_decrease < min_impurity_decrease:
+                    continue
+                if impurity[indxArgMin] < min_impurity:
                     self.split_feature_value = 0.5*(xUniqueSorted[indxArgMin]+xUniqueSorted[indxArgMin+1])
                     self.split_feature_index = iFtr
-                    min_cost = costFunction[indxArgMin]
+                    min_impurity = impurity[indxArgMin]
                 iFtrCount+=1
                 if iFtrCount >= max_features:
                     break
             if iFtrCount == 0:
                 self.prediction = np.mean(y,axis=0)
                 return                    
-            min_cost_argsort=x[:,self.split_feature_index].argsort()
-            x=x[min_cost_argsort,:]
-            y=y[min_cost_argsort,:]
-            min_costi_index = np.argmax(x[:,self.split_feature_index]>self.split_feature_value)
+            min_impurity_argsort=x[:,self.split_feature_index].argsort()
+            x=x[min_impurity_argsort,:]
+            y=y[min_impurity_argsort,:]
+            min_impurityi_index = np.argmax(x[:,self.split_feature_index]>self.split_feature_value)
             self.less_than_node = RandomForest.RFTreeNode()
-            self.less_than_node.grow_tree(x[:min_costi_index,:],y[:min_costi_index],max_features,criterion,min_samples_leaf,min_samples_split,max_depth,self.depth)
+            self.less_than_node.grow_tree(x[:min_impurityi_index,:],y[:min_impurityi_index],max_features,criterion,min_samples_leaf,min_samples_split,max_depth,self.depth,min_impurity_decrease,n_samples_total)
             self.greater_than_node = RandomForest.RFTreeNode()
-            self.greater_than_node.grow_tree(x[min_costi_index:,:],y[min_costi_index:],max_features,criterion,min_samples_leaf,min_samples_split,max_depth,self.depth)
+            self.greater_than_node.grow_tree(x[min_impurityi_index:,:],y[min_impurityi_index:],max_features,criterion,min_samples_leaf,min_samples_split,max_depth,self.depth,min_impurity_decrease,n_samples_total)
         
         def predict(self,x):
             #print(self.depth)
@@ -186,7 +191,7 @@ class RandomForest:
                 xBootstrap = x[bootstrapIndx,:]
                 yBootstrap = y_encoded[bootstrapIndx,:]
                 #xBootstrap, yBootstrap = resample(x,y_encoded)
-                self.tree_base_node_list[iEstimator].grow_tree(xBootstrap,yBootstrap,max_features,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0)
+                self.tree_base_node_list[iEstimator].grow_tree(xBootstrap,yBootstrap,max_features,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0,self.min_impurity_decrease,x.shape[0])
                 if self.oob_score == True:
                     oob_indicies = np.where(np.isin(sample_range,bootstrapIndx) == False)[0]
                     if len(oob_indicies) > 0:
@@ -195,7 +200,7 @@ class RandomForest:
                         for indx in range(x_oob.shape[0]):
                             oob_pred[oob_indicies[indx],:]+=self.tree_base_node_list[iEstimator].predict(x_oob[indx,:])         
             else:
-                self.tree_base_node_list[iEstimator].grow_tree(x.copy(),y_encoded.copy(),max_features,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0)
+                self.tree_base_node_list[iEstimator].grow_tree(x.copy(),y_encoded.copy(),max_features,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0,self.min_impurity_decrease,x.shape[0])
         if self.oob_score == True:
             oob_indicies = np.where(oob_counts > 0)[0]
             if len(oob_indicies) > 0:
