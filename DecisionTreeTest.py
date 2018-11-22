@@ -14,7 +14,7 @@ from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
 np.random.seed(111)
 maxFeatures = 'auto'
-n_features = 2
+n_features = 100
 n_samples = 500
 x = np.random.uniform(-10.0,10.0,n_samples*n_features)
 x = x.reshape([n_samples,n_features])

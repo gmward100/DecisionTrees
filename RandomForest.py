@@ -68,7 +68,7 @@ class RandomForest:
                 return
             feature_indicies = np.arange(x.shape[1],dtype=np.int32)
             np.random.shuffle(feature_indicies)
-            max_features_considered = np.max(np.array([min_features_considered,x.shape[1]+1-np.log2(x.shape[0])]))
+            max_features_considered = np.max(np.array([min_features_considered,x.shape[1]+1-int(np.floor(0.5*np.log2(x.shape[0])+0.5*x.shape[0]))]))
             feature_impurity_decrease = np.zeros(x.shape[1],dtype=np.float32)
             feature_split_value =  np.zeros(x.shape[1],dtype=np.float32)
             iFtrCount = 0
@@ -106,8 +106,8 @@ class RandomForest:
                 impurity_decrease = (float(rightCumulativeCount[0])/float(n_samples_total))*(impurity_zero - impurity[indxArgMin]/float(rightCumulativeCount[0]))
                 if impurity_decrease < min_impurity_decrease:
                     continue
-                feature_impurity_decrease[feature_indicies[iFtr]] = impurity_decrease
-                feature_split_value[feature_indicies[iFtr]] = 0.5*(xUniqueSorted[indxArgMin]+xUniqueSorted[indxArgMin+1])
+                feature_impurity_decrease[iFtr] = impurity_decrease
+                feature_split_value[iFtr] = 0.5*(xUniqueSorted[indxArgMin]+xUniqueSorted[indxArgMin+1])
                 iFtrCount+=1
                 if iFtrCount >= max_features_considered:
                     break
@@ -122,11 +122,12 @@ class RandomForest:
                 feature_impurity_weight = feature_impurity_decrease/feature_impurity_decrease_sum
             self.split_feature_index = np.random.choice(np.arange(x.shape[1],dtype=np.int32),p=feature_impurity_weight)
             self.split_feature_value = feature_split_value[self.split_feature_index]
-            print('split = ',self.split_feature_index,',',self.split_feature_value,',',feature_impurity_weight[self.split_feature_index])
+            #print('split = ',self.split_feature_index,',',self.split_feature_value,',',feature_impurity_weight[self.split_feature_index])
             min_impurity_argsort=x[:,self.split_feature_index].argsort()
             x=x[min_impurity_argsort,:]
             y=y[min_impurity_argsort,:]
             min_impurityi_index = np.argmax(x[:,self.split_feature_index]>self.split_feature_value)
+            #print('min impurity index = ',min_impurityi_index,',',x.shape[0])
             self.less_than_node = RandomForest.RFTreeNode()
             self.less_than_node.grow_tree(x[:min_impurityi_index,:],y[:min_impurityi_index],min_features_considered,criterion,min_samples_leaf,min_samples_split,max_depth,self.depth,min_impurity_decrease,n_samples_total)
             self.greater_than_node = RandomForest.RFTreeNode()
