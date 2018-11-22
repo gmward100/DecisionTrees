@@ -13,8 +13,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
 np.random.seed(111)
-maxFeatures = 500
-n_features = 500
+maxFeatures = 'auto'
+n_features = 4
 n_samples = 500
 x = np.random.uniform(-10.0,10.0,n_samples*n_features)
 x = x.reshape([n_samples,n_features])
@@ -47,16 +47,26 @@ print('Number of true values = ',len(whrTrue))
 skf = StratifiedKFold(n_splits=5, random_state=1331, shuffle=False)
 print(skf.get_n_splits(x, yf))
 y_pred_all = np.zeros(n_samples)
+y_pred_all_sk = np.zeros(n_samples)
 for train_index, test_index in skf.split(x, yf):
     print("TRAIN:", train_index[:10], "TEST:", test_index[:10])
     x_train, x_test = x[train_index], x[test_index]
     y_train, y_test = yf[train_index], yf[test_index]  
+    rf = RandomForest(n_estimators=100,max_features=maxFeatures)
+    rf.fit(x_train,y_train)
+    print('classes = ',rf.classes)
+    y_pred = rf.predict(x_test)
+    y_pred_all[test_index] = y_pred[:,1]
+    print(y_pred[0:10,1])
+    print(y_pred[-10:,1])        
+    print('avg test error = {}'.format(np.mean((y_pred[:,1]-y_test)**2)))
+    
     rfsk = RandomForestClassifier(n_estimators=100,max_features=maxFeatures)
     #rfsk = RandomForestClassifier(n_estimators=100,criterion='entropy')    
     rfsk.fit(x_train,y_train)
-    print('classes = ',rfsk.classes_)
+    print('classes sk= ',rfsk.classes_)
     y_pred = rfsk.predict_proba(x_test)
-    y_pred_all[test_index] = y_pred[:,1]
+    y_pred_all_sk[test_index] = y_pred[:,1]
     print(y_pred[0:10,1])
     print(y_pred[-10:,1])        
     print('sklearn avg test error = {}'.format(np.mean((y_pred[:,1]-y_test)**2)))
@@ -64,10 +74,14 @@ for train_index, test_index in skf.split(x, yf):
     
 fpr, tpr, _ = roc_curve(yf, y_pred_all)
 roc_auc = auc(fpr, tpr)    
-
+    
+fprsk, tprsk, _ = roc_curve(yf, y_pred_all_sk)
+roc_aucsk = auc(fprsk, tprsk)    
 plt.figure(2)
+plt.clf()
 lw = 2
 plt.plot(fpr, tpr, color='darkorange',lw=lw, label='ROC curve (area = %0.2f)' % roc_auc)
+plt.plot(fprsk, tprsk, color='g',lw=lw, label='SK ROC curve (area = %0.2f)' % roc_aucsk)
 plt.plot([0, 1], [0, 1], color='navy', lw=lw, linestyle='--')
 plt.xlim([0.0, 1.0])
 plt.ylim([0.0, 1.05])
