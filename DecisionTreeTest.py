@@ -14,7 +14,7 @@ from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
 np.random.seed(111)
 maxFeatures = 'auto'
-n_features = 4
+n_features = 2
 n_samples = 500
 x = np.random.uniform(-10.0,10.0,n_samples*n_features)
 x = x.reshape([n_samples,n_features])
@@ -52,7 +52,7 @@ for train_index, test_index in skf.split(x, yf):
     print("TRAIN:", train_index[:10], "TEST:", test_index[:10])
     x_train, x_test = x[train_index], x[test_index]
     y_train, y_test = yf[train_index], yf[test_index]  
-    rf = RandomForest(n_estimators=100,max_features=maxFeatures)
+    rf = RandomForest(n_estimators=100,min_features_considered=maxFeatures)
     rf.fit(x_train,y_train)
     print('classes = ',rf.classes)
     y_pred = rf.predict(x_test)
