@@ -14,7 +14,7 @@ from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
 np.random.seed(111)
 maxFeatures = 'auto'
-n_features = 100
+n_features = 10
 n_samples = 500
 x = np.random.uniform(-10.0,10.0,n_samples*n_features)
 x = x.reshape([n_samples,n_features])
@@ -52,7 +52,7 @@ for train_index, test_index in skf.split(x, yf):
     print("TRAIN:", train_index[:10], "TEST:", test_index[:10])
     x_train, x_test = x[train_index], x[test_index]
     y_train, y_test = yf[train_index], yf[test_index]  
-    rf = RandomForest(n_estimators=100,min_features_considered=maxFeatures)
+    rf = RandomForest(n_estimators=100,min_features_considered=maxFeatures,oob_score=True)
     rf.fit(x_train,y_train)
     print('classes = ',rf.classes)
     y_pred = rf.predict(x_test)
@@ -60,8 +60,9 @@ for train_index, test_index in skf.split(x, yf):
     print(y_pred[0:10,1])
     print(y_pred[-10:,1])        
     print('avg test error = {}'.format(np.mean((y_pred[:,1]-y_test)**2)))
+    print('oob error = {}'.format(rf.oob_error))
     
-    rfsk = RandomForestClassifier(n_estimators=100,max_features=maxFeatures)
+    rfsk = RandomForestClassifier(n_estimators=100,max_features=maxFeatures,oob_score=True)
     #rfsk = RandomForestClassifier(n_estimators=100,criterion='entropy')    
     rfsk.fit(x_train,y_train)
     print('classes sk= ',rfsk.classes_)
@@ -70,7 +71,11 @@ for train_index, test_index in skf.split(x, yf):
     print(y_pred[0:10,1])
     print(y_pred[-10:,1])        
     print('sklearn avg test error = {}'.format(np.mean((y_pred[:,1]-y_test)**2)))
+    print('sk oob score = {}'.format(rfsk.oob_score_))
+    print('sk feature importance = ')
+    print(rfsk.feature_importances_ )
     print('-------------------------------')
+
     
 fpr, tpr, _ = roc_curve(yf, y_pred_all)
 roc_auc = auc(fpr, tpr)    
