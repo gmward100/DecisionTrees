@@ -50,6 +50,40 @@ class RandomForest:
             self.prediction = None
             self.depth = 0
             
+        def EvaluateFeatures(self,x,y,max_features,minimum_class_sum,criterion,max_estimators,alpha,input_weights):
+            ySum = np.sum(y,axis = 0)
+            for iclass in range(y.shape[1]):
+                if ySum[iclass] == y.shape[0]:
+                    return input_weights.copy()
+            minClassSum = int(np.min(ySum))
+            if minClassSum < minimum_class_sum:
+                return input_weights.copy()                 
+            x_rf = np.zeros([x.shape[0],max_features])
+            feature_indicies = np.arange(x.shape[1],dtype=np.int32) 
+            output_weights = np.zeros(x.shape[1])
+            best_feature_indicies = []
+            for iFtr in range(max_features):
+                max_oob_score = 0.0
+                iFtrBest = 0
+                for iFtrNew in feature_indicies:
+                    if iFtrNew in best_feature_indicies:
+                        continue
+                    x_rf[:,len(best_feature_indicies)] = x[:,iFtrNew]
+                    rf = RandomForestClassifier(n_estimators=np.min([2*minClassSum,max_estimators]),oob_score=True)
+                    rf.fit(x_rf[:,0:len(best_feature_indicies)+1],y)
+                    if rf.oob_score_ > max_oob_score:
+                        max_oob_score = rf.oob_score_
+                        iFtrBest = iFtrNew
+                    output_weights[iFtrNew]+=rf.oob_score_
+                    for iFtrOld in best_feature_indicies:
+                        output_weights[iFtrOld]+=rf.oob_score_
+                best_feature_indicies.append(iFtrBest)
+            output_weights*=(1.0-alpha)
+            output_weights+=alpha*input_weights
+            output_weights/=np.sum(output_weights)
+            return output_weights
+                    
+            
         def grow_tree(self,x,y,min_features_considered,criterion,min_samples_leaf,min_samples_split,max_depth,depth,min_impurity_decrease,n_samples_total,skrfparams,sk_rf_prev_feature_weights,sk_rf_weight_fade):
             
             self.depth = depth+1
@@ -68,39 +102,45 @@ class RandomForest:
                 self.prediction = np.mean(y)
                 return
             feature_indicies = np.arange(x.shape[1],dtype=np.int32)
+            max_features_considered = np.min([x.shape[1],2*np.min([int(np.min(ySum)), int(np.ceil(np.log2(x.shape[0])))])])    
+            sk_rf_feature_weights = self.EvaluateFeatures(x,y,max_features_considered,8,criterion,50,sk_rf_weight_fade,sk_rf_prev_feature_weights)
+            #print('max features considered = ',max_features_considered)
+            #print(sk_rf_feature_weights)
             #np.random.shuffle(feature_indicies)
             #max_features_considered = np.max(np.array([min_features_considered,x.shape[1]+1-int(np.floor(0.5*np.log2(x.shape[0])+0.5*x.shape[0]))]))
-            max_features_considered = np.min([x.shape[1],np.min([int(np.min(ySum)), int(np.ceil(np.log2(x.shape[0])))])])
-            n_sk_rf = int(np.ceil(float(x.shape[1])/float(max_features_considered)))
-            sk_rf_feature_weights = np.zeros(x.shape[1])
-            sk_rf_feature_counts = np.zeros(x.shape[1])
-            for irf in range(n_sk_rf):
-                rf_features = np.random.choice(feature_indicies,size = max_features_considered)
-                x_rf = x[:,rf_features]
-                #rf = RandomForestClassifier(n_estimators=skrfparams['n_estimators'],oob_score=True)
-                rf = RandomForestClassifier(n_estimators=skrfparams['n_estimators'])                
-                rf.fit(x_rf,y)
-                for iftr in range(rf_features.shape[0]):
-                   # sk_rf_feature_weights[rf_features[iftr]]+=rf.oob_score_*rf.feature_importances_[iftr]
-                    sk_rf_feature_weights[rf_features[iftr]]+=rf.feature_importances_[iftr]                    
-                    sk_rf_feature_counts[rf_features[iftr]]+=1.0
-            sk_rf_feature_counts = np.clip(sk_rf_feature_counts,1.0,float(n_sk_rf+1))
-            sk_rf_feature_weights/=sk_rf_feature_counts
-#            rf = RandomForestClassifier(n_estimators=skrfparams['n_estimators'])        
-#            rf.fit(x,y)            
-            sk_rf_feature_weights_sum = np.sum(sk_rf_feature_weights)
-            if sk_rf_feature_weights_sum == 0.0:
-                sk_rf_feature_weights = sk_rf_prev_feature_weights.copy()
-            else:
-                sk_rf_feature_weights/=sk_rf_feature_weights_sum
-                sk_rf_feature_weights=(1.0-sk_rf_weight_fade)*sk_rf_feature_weights+sk_rf_weight_fade*sk_rf_prev_feature_weights
-                sk_rf_feature_weights/=np.sum(sk_rf_feature_weights)
+            #max_features_considered = np.min([x.shape[1],np.min([int(np.min(ySum)), int(np.ceil(np.log2(x.shape[0])))])])
+#            n_sk_rf = int(np.ceil(float(x.shape[1])/float(max_features_considered)))
+#            sk_rf_feature_weights = np.zeros(x.shape[1])
+#            sk_rf_feature_counts = np.zeros(x.shape[1])
+#            for irf in range(n_sk_rf):
+#                rf_features = np.random.choice(feature_indicies,size = max_features_considered)
+#                x_rf = x[:,rf_features]
+#                #rf = RandomForestClassifier(n_estimators=skrfparams['n_estimators'],oob_score=True)
+#                rf = RandomForestClassifier(n_estimators=skrfparams['n_estimators'])                
+#                rf.fit(x_rf,y)
+#                for iftr in range(rf_features.shape[0]):
+#                   # sk_rf_feature_weights[rf_features[iftr]]+=rf.oob_score_*rf.feature_importances_[iftr]
+#                    sk_rf_feature_weights[rf_features[iftr]]+=rf.feature_importances_[iftr]                    
+#                    sk_rf_feature_counts[rf_features[iftr]]+=1.0
+#            sk_rf_feature_counts = np.clip(sk_rf_feature_counts,1.0,float(n_sk_rf+1))
+#            sk_rf_feature_weights/=sk_rf_feature_counts
+            #rf = RandomForestClassifier(n_estimators=100)        
+            #rf.fit(x,y)            
+#            sk_rf_feature_weights = rf.feature_importances_
+#            sk_rf_feature_weights_sum = np.sum(sk_rf_feature_weights)
+#            if sk_rf_feature_weights_sum == 0.0:
+#                sk_rf_feature_weights = sk_rf_prev_feature_weights.copy()
+#            else:
+#                sk_rf_feature_weights/=sk_rf_feature_weights_sum
+#                sk_rf_feature_weights=(1.0-sk_rf_weight_fade)*sk_rf_feature_weights+sk_rf_weight_fade*sk_rf_prev_feature_weights
+#                sk_rf_feature_weights/=np.sum(sk_rf_feature_weights)
                 
-            sk_argsort = np.argsort(sk_rf_feature_weights)
-            feature_indicies = feature_indicies[sk_argsort]
+            #sk_argsort = np.argsort(sk_rf_feature_weights)
+            #feature_indicies = feature_indicies[sk_argsort]
+            max_ftr = int(np.sqrt(max_features_considered))
             min_impurity = float(x.shape[0]+2)
             iFtrCount = 0
-            feature_indicies = np.array([np.random.choice(feature_indicies,p=sk_rf_feature_weights)])
+            feature_indicies = np.random.choice(feature_indicies, size=max_ftr, p=sk_rf_feature_weights, replace = False)
             for iFtr in feature_indicies:
                 xUniqueSorted, reverseIndex, counts = np.unique(x[:,iFtr],return_inverse=True,return_counts=True)
                 if xUniqueSorted.shape[0] == 1:
@@ -215,7 +255,7 @@ class RandomForest:
             oob_counts = np.zeros(x.shape[0],dtype=np.float32)    
             sample_range = np.arange(x.shape[0],dtype=np.int32)
             
-        sk_feature_weight_fade = 0.25
+        sk_feature_weight_fade = 0.5
         for iEstimator in range(self.n_estimators):
             self.tree_base_node_list.append(self.RFTreeNode())
             if self.bootstrap == True:
