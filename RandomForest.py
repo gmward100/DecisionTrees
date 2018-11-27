@@ -50,14 +50,14 @@ class RandomForest:
             self.prediction = None
             self.depth = 0
             
-        def EvaluateFeatures(self,x,y,max_features,minimum_class_sum,criterion,max_estimators,alpha,input_weights):
+        def EvaluateFeatures(self,x,y,max_features,minimum_class_sum,criterion,max_estimators,alpha,input_weights,input_features):
             ySum = np.sum(y,axis = 0)
             for iclass in range(y.shape[1]):
                 if ySum[iclass] == y.shape[0]:
-                    return input_weights.copy()
+                    return input_weights.copy(), input_features.copy()
             minClassSum = int(np.min(ySum))
             if minClassSum < minimum_class_sum:
-                return input_weights.copy()                 
+                return input_weights.copy(), input_features.copy()
             x_rf = np.zeros([x.shape[0],max_features])
             feature_indicies = np.arange(x.shape[1],dtype=np.int32) 
             output_weights = np.zeros(x.shape[1])
@@ -81,10 +81,10 @@ class RandomForest:
             output_weights*=(1.0-alpha)
             output_weights+=alpha*input_weights
             output_weights/=np.sum(output_weights)
-            return output_weights
+            return output_weights, np.array(best_feature_indicies)
                     
             
-        def grow_tree(self,x,y,min_features_considered,criterion,min_samples_leaf,min_samples_split,max_depth,depth,min_impurity_decrease,n_samples_total,skrfparams,sk_rf_prev_feature_weights,sk_rf_weight_fade):
+        def grow_tree(self,x,y,min_features_considered,criterion,min_samples_leaf,min_samples_split,max_depth,depth,min_impurity_decrease,n_samples_total,skrfparams,sk_rf_prev_feature_weights,sk_best_feature_indicies,sk_rf_weight_fade):
             
             self.depth = depth+1
             if max_depth is not None:
@@ -102,8 +102,8 @@ class RandomForest:
                 self.prediction = np.mean(y)
                 return
             feature_indicies = np.arange(x.shape[1],dtype=np.int32)
-            max_features_considered = np.min([x.shape[1],2*np.min([int(np.min(ySum)), int(np.ceil(np.log2(x.shape[0])))])])    
-            sk_rf_feature_weights = self.EvaluateFeatures(x,y,max_features_considered,8,criterion,50,sk_rf_weight_fade,sk_rf_prev_feature_weights)
+            max_features_considered = np.min([x.shape[1], int(np.min(ySum)), int(np.ceil(np.log2(x.shape[0])))])
+            sk_rf_feature_weights, best_feature_indicies = self.EvaluateFeatures(x,y,max_features_considered,8,criterion,50,sk_rf_weight_fade,sk_rf_prev_feature_weights,sk_best_feature_indicies)
             #print('max features considered = ',max_features_considered)
             #print(sk_rf_feature_weights)
             #np.random.shuffle(feature_indicies)
@@ -140,7 +140,13 @@ class RandomForest:
             max_ftr = int(np.sqrt(max_features_considered))
             min_impurity = float(x.shape[0]+2)
             iFtrCount = 0
-            feature_indicies = np.random.choice(feature_indicies, size=max_ftr, p=sk_rf_feature_weights, replace = False)
+            #feature_indicies = np.random.choice(feature_indicies, size=max_ftr, p=sk_rf_feature_weights, replace = False)
+            #feature_indicies = np.random.choice(best_feature_indicies, size=max_ftr, p=sk_rf_feature_weights, replace = False)
+            best_feature_weights = sk_rf_feature_weights[best_feature_indicies]
+            best_feature_weights/=np.sum(best_feature_weights)
+            feature_indicies = np.random.choice(best_feature_indicies, size=max_ftr, p=best_feature_weights, replace = False)
+            #feature_indicies = best_feature_indicies.copy()
+            #np.random.shuffle(feature_indicies)
             for iFtr in feature_indicies:
                 xUniqueSorted, reverseIndex, counts = np.unique(x[:,iFtr],return_inverse=True,return_counts=True)
                 if xUniqueSorted.shape[0] == 1:
@@ -180,7 +186,7 @@ class RandomForest:
                     self.split_feature_index = iFtr
                     min_impurity = impurity[indxArgMin]
                 iFtrCount+=1
-                if iFtrCount >= min_features_considered:
+                if iFtrCount >= max_ftr:
                     break
             if iFtrCount == 0:
                 self.prediction = np.mean(y,axis=0)
@@ -190,9 +196,9 @@ class RandomForest:
             y=y[min_impurity_argsort,:]
             min_impurityi_index = np.argmax(x[:,self.split_feature_index]>self.split_feature_value)
             self.less_than_node = RandomForest.RFTreeNode()
-            self.less_than_node.grow_tree(x[:min_impurityi_index,:],y[:min_impurityi_index],min_features_considered,criterion,min_samples_leaf,min_samples_split,max_depth,self.depth,min_impurity_decrease,n_samples_total,skrfparams,sk_rf_feature_weights,sk_rf_weight_fade)
+            self.less_than_node.grow_tree(x[:min_impurityi_index,:],y[:min_impurityi_index],min_features_considered,criterion,min_samples_leaf,min_samples_split,max_depth,self.depth,min_impurity_decrease,n_samples_total,skrfparams,sk_rf_feature_weights,feature_indicies,sk_rf_weight_fade)
             self.greater_than_node = RandomForest.RFTreeNode()
-            self.greater_than_node.grow_tree(x[min_impurityi_index:,:],y[min_impurityi_index:],min_features_considered,criterion,min_samples_leaf,min_samples_split,max_depth,self.depth,min_impurity_decrease,n_samples_total,skrfparams,sk_rf_feature_weights,sk_rf_weight_fade)
+            self.greater_than_node.grow_tree(x[min_impurityi_index:,:],y[min_impurityi_index:],min_features_considered,criterion,min_samples_leaf,min_samples_split,max_depth,self.depth,min_impurity_decrease,n_samples_total,skrfparams,sk_rf_feature_weights,feature_indicies,sk_rf_weight_fade)
             
         def predict(self,x):
             #print(self.depth)
@@ -265,7 +271,8 @@ class RandomForest:
                 yBootstrap = y_encoded[bootstrapIndx,:]
                 #xBootstrap, yBootstrap = resample(x,y_encoded)
                 sk_feature_weights = np.zeros(x.shape[1])+1.0/float(x.shape[1])
-                self.tree_base_node_list[iEstimator].grow_tree(xBootstrap,yBootstrap,min_features_considered,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0,self.min_impurity_decrease,x.shape[0],skrfparams,sk_feature_weights,sk_feature_weight_fade)
+                sk_feature_indicies = np.arange(x.shape[1],dtype=np.int32)
+                self.tree_base_node_list[iEstimator].grow_tree(xBootstrap,yBootstrap,min_features_considered,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0,self.min_impurity_decrease,x.shape[0],skrfparams,sk_feature_weights,sk_feature_indicies,sk_feature_weight_fade)
                 if self.oob_score == True:
                     oob_indicies = np.where(np.isin(sample_range,bootstrapIndx) == False)[0]
                     if len(oob_indicies) > 0:
@@ -274,8 +281,9 @@ class RandomForest:
                         for indx in range(x_oob.shape[0]):
                             oob_pred[oob_indicies[indx],:]+=self.tree_base_node_list[iEstimator].predict(x_oob[indx,:])         
             else:
-                sk_feature_weights = np.zeros(x.shape[1])+1.0/float(x.shape[1])                
-                self.tree_base_node_list[iEstimator].grow_tree(x.copy(),y_encoded.copy(),min_features_considered,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0,self.min_impurity_decrease,x.shape[0],skrfparams,sk_feature_weights,sk_feature_weight_fade)
+                sk_feature_weights = np.zeros(x.shape[1])+1.0/float(x.shape[1])    
+                sk_feature_indicies = np.arange(x.shape[1],dtype=np.int32)
+                self.tree_base_node_list[iEstimator].grow_tree(x.copy(),y_encoded.copy(),min_features_considered,self.criterion,self.min_samples_leaf,self.min_samples_split,self.max_depth,0,self.min_impurity_decrease,x.shape[0],skrfparams,sk_feature_weights,sk_feature_indicies,sk_feature_weight_fade)
         if self.oob_score == True:
             oob_indicies = np.where(oob_counts > 0)[0]
             if len(oob_indicies) > 0:
