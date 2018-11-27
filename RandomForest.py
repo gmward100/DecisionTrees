@@ -70,7 +70,7 @@ class RandomForest:
             feature_indicies = np.arange(x.shape[1],dtype=np.int32)
             #np.random.shuffle(feature_indicies)
             #max_features_considered = np.max(np.array([min_features_considered,x.shape[1]+1-int(np.floor(0.5*np.log2(x.shape[0])+0.5*x.shape[0]))]))
-            max_features_considered = np.min([x.shape[1],int(np.ceil(np.log2(x.shape[0])))])
+            max_features_considered = np.min([x.shape[1],np.min([int(np.min(ySum)), int(np.ceil(np.log2(x.shape[0])))])])
             n_sk_rf = int(np.ceil(float(x.shape[1])/float(max_features_considered)))
             sk_rf_feature_weights = np.zeros(x.shape[1])
             sk_rf_feature_counts = np.zeros(x.shape[1])
@@ -82,10 +82,12 @@ class RandomForest:
                 rf.fit(x_rf,y)
                 for iftr in range(rf_features.shape[0]):
                    # sk_rf_feature_weights[rf_features[iftr]]+=rf.oob_score_*rf.feature_importances_[iftr]
-                    sk_rf_feature_weights[rf_features[iftr]]+rf.feature_importances_[iftr]                    
+                    sk_rf_feature_weights[rf_features[iftr]]+=rf.feature_importances_[iftr]                    
                     sk_rf_feature_counts[rf_features[iftr]]+=1.0
             sk_rf_feature_counts = np.clip(sk_rf_feature_counts,1.0,float(n_sk_rf+1))
             sk_rf_feature_weights/=sk_rf_feature_counts
+#            rf = RandomForestClassifier(n_estimators=skrfparams['n_estimators'])        
+#            rf.fit(x,y)            
             sk_rf_feature_weights_sum = np.sum(sk_rf_feature_weights)
             if sk_rf_feature_weights_sum == 0.0:
                 sk_rf_feature_weights = sk_rf_prev_feature_weights.copy()
@@ -98,6 +100,7 @@ class RandomForest:
             feature_indicies = feature_indicies[sk_argsort]
             min_impurity = float(x.shape[0]+2)
             iFtrCount = 0
+            feature_indicies = np.array([np.random.choice(feature_indicies,p=sk_rf_feature_weights)])
             for iFtr in feature_indicies:
                 xUniqueSorted, reverseIndex, counts = np.unique(x[:,iFtr],return_inverse=True,return_counts=True)
                 if xUniqueSorted.shape[0] == 1:
