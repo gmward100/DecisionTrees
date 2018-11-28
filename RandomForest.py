@@ -77,7 +77,9 @@ class RandomForest:
                     output_weights[iFtrNew]+=rf.oob_score_
                     for iFtrOld in best_feature_indicies:
                         output_weights[iFtrOld]+=rf.oob_score_
+                x_rf[:,len(best_feature_indicies)] = x[:,iFtrBest]                        
                 best_feature_indicies.append(iFtrBest)
+                
             output_weights*=(1.0-alpha)
             output_weights+=alpha*input_weights
             output_weights/=np.sum(output_weights)

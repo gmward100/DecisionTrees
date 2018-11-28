@@ -12,6 +12,34 @@ from sklearn.model_selection import StratifiedKFold
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import roc_curve, auc
 import matplotlib.pyplot as plt
+
+def EvaluateFeatures(x,y,max_features,minimum_class_sum,criterion,max_estimators):
+    ySum = np.sum(y,axis = 0)
+    minClassSum = int(np.min(ySum))    
+    x_rf = np.zeros([x.shape[0],max_features])
+    feature_indicies = np.arange(x.shape[1],dtype=np.int32) 
+    output_weights = np.zeros(x.shape[1])
+    best_feature_indicies = []
+    for iFtr in range(max_features):
+        max_oob_score = 0.0
+        iFtrBest = 0
+        for iFtrNew in feature_indicies:
+            if iFtrNew in best_feature_indicies:
+                continue
+            x_rf[:,len(best_feature_indicies)] = x[:,iFtrNew]
+            rf = RandomForestClassifier(n_estimators=np.min([2*minClassSum,max_estimators]),oob_score=True)
+            rf.fit(x_rf[:,0:len(best_feature_indicies)+1],y)
+            if rf.oob_score_ > max_oob_score:
+                max_oob_score = rf.oob_score_
+                iFtrBest = iFtrNew
+            output_weights[iFtrNew]+=rf.oob_score_
+            for iFtrOld in best_feature_indicies:
+                output_weights[iFtrOld]+=rf.oob_score_
+        x_rf[:,len(best_feature_indicies)] = x[:,iFtrBest]                   
+        best_feature_indicies.append(iFtrBest)
+    output_weights/=np.sum(output_weights)
+    return output_weights, np.array(best_feature_indicies)
+
 np.random.seed(111)
 maxFeatures = 'auto'
 n_features = 10
@@ -36,11 +64,20 @@ whrFalse = np.where(yRand > pTrue)[0]
 whrTF = yRand <= pTrue
 y = ['True' if whrTF[indx] else 'False' for indx in range(n_samples)]
 yf = np.zeros(n_samples)
+yf2 = np.zeros([n_samples,2])
 yf[whrTrue] = 1.0
+yf2[:,0] = 1.0-yf
+yf2[:,1] = yf
 plt.figure(1)
 plt.clf()
 plt.plot(x[whrTrue,0],x[whrTrue,1],'ro')
 plt.plot(x[whrFalse,0],x[whrFalse,1],'bx')
+
+#weights,features = EvaluateFeatures(x,yf2,6,8,'gini',50)
+#print(weights)
+#print(features)
+#stop
+
 
 print('Number of true values = ',len(whrTrue))
 
