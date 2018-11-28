@@ -69,7 +69,7 @@ class RandomForest:
                     if iFtrNew in best_feature_indicies:
                         continue
                     x_rf[:,len(best_feature_indicies)] = x[:,iFtrNew]
-                    rf = RandomForestClassifier(n_estimators=np.min([2*minClassSum,max_estimators]),oob_score=True)
+                    rf = RandomForestClassifier(n_estimators=np.min([4*minClassSum,max_estimators]),oob_score=True)
                     rf.fit(x_rf[:,0:len(best_feature_indicies)+1],y)
                     if rf.oob_score_ > max_oob_score:
                         max_oob_score = rf.oob_score_
@@ -105,7 +105,7 @@ class RandomForest:
                 return
             feature_indicies = np.arange(x.shape[1],dtype=np.int32)
             max_features_considered = np.min([x.shape[1], int(np.min(ySum)), int(np.ceil(np.log2(x.shape[0])))])
-            sk_rf_feature_weights, best_feature_indicies = self.EvaluateFeatures(x,y,max_features_considered,8,criterion,50,sk_rf_weight_fade,sk_rf_prev_feature_weights,sk_best_feature_indicies)
+            sk_rf_feature_weights, best_feature_indicies = self.EvaluateFeatures(x,y,max_features_considered,8,criterion,150,sk_rf_weight_fade,sk_rf_prev_feature_weights,sk_best_feature_indicies)
             #print('max features considered = ',max_features_considered)
             #print(sk_rf_feature_weights)
             #np.random.shuffle(feature_indicies)

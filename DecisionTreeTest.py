@@ -27,7 +27,7 @@ def EvaluateFeatures(x,y,max_features,minimum_class_sum,criterion,max_estimators
             if iFtrNew in best_feature_indicies:
                 continue
             x_rf[:,len(best_feature_indicies)] = x[:,iFtrNew]
-            rf = RandomForestClassifier(n_estimators=np.min([2*minClassSum,max_estimators]),oob_score=True)
+            rf = RandomForestClassifier(n_estimators=np.min([4*minClassSum,max_estimators]),oob_score=True)
             rf.fit(x_rf[:,0:len(best_feature_indicies)+1],y)
             if rf.oob_score_ > max_oob_score:
                 max_oob_score = rf.oob_score_
@@ -42,7 +42,7 @@ def EvaluateFeatures(x,y,max_features,minimum_class_sum,criterion,max_estimators
 
 np.random.seed(111)
 maxFeatures = 'auto'
-n_features = 10
+n_features = 30
 n_samples = 500
 x = np.random.uniform(-10.0,10.0,n_samples*n_features)
 x = x.reshape([n_samples,n_features])
@@ -73,9 +73,9 @@ plt.clf()
 plt.plot(x[whrTrue,0],x[whrTrue,1],'ro')
 plt.plot(x[whrFalse,0],x[whrFalse,1],'bx')
 
-#weights,features = EvaluateFeatures(x,yf2,6,8,'gini',50)
-#print(weights)
-#print(features)
+weights,features = EvaluateFeatures(x,yf2,6,8,'gini',150)
+print(weights)
+print(features)
 #stop
 
 
@@ -89,7 +89,7 @@ for train_index, test_index in skf.split(x, yf):
     print("TRAIN:", train_index[:10], "TEST:", test_index[:10])
     x_train, x_test = x[train_index], x[test_index]
     y_train, y_test = yf[train_index], yf[test_index]  
-    rf = RandomForest(n_estimators=100,min_features_considered=maxFeatures,oob_score=True)
+    rf = RandomForest(n_estimators=30,min_features_considered=maxFeatures,oob_score=True)
     rf.fit(x_train,y_train)
     print('classes = ',rf.classes)
     y_pred = rf.predict(x_test)
@@ -99,7 +99,7 @@ for train_index, test_index in skf.split(x, yf):
     print('avg test error = {}'.format(np.mean((y_pred[:,1]-y_test)**2)))
     print('oob error = {}'.format(rf.oob_error))
     
-    rfsk = RandomForestClassifier(n_estimators=100,max_features=maxFeatures,oob_score=True)
+    rfsk = RandomForestClassifier(n_estimators=30,max_features=maxFeatures,oob_score=True)
     #rfsk = RandomForestClassifier(n_estimators=100,criterion='entropy')    
     rfsk.fit(x_train,y_train)
     print('classes sk= ',rfsk.classes_)
